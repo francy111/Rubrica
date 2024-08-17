@@ -78,9 +78,9 @@ void ctrlcHandler(int sig) {
         // Eseguiremo il programma /serverManager
         execl("./utility/serverManager", "serverManager", ppidStr, author, NULL);
 
-        // Queste righe non dovrebbero essere eseguite
-        perror("execl");
-        exit(EXIT_FAILURE);
+        // Se il manager non è presente o non è stato possibile aprirlo chiudiamo direttamente
+        kill(getppid(), SIGUSR2);
+        exit(EXIT_SUCCESS);
     }
 }
 
