@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #define CONTACT_STRINGS_LENGTH 10
 #define AUTH_STRINGS_LENGTH 20
-
+#define HASH_LENGTH 20
 // Costanti per i colori nelle printf()
 #define GREEN "\x1b[32m"
 #define YELLOW "\x1b[33m"
