@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <openssl/sha.h>
 #include <termios.h>
 
 int getContact(Contact *cntc, int index) {
@@ -276,21 +275,21 @@ int isContactEmpty(Contact cntc) {
 int checkCredentials(char *username, char *password) {
 
     // Le credenziali vengono salvate come coppia (user,password), che è univoca, quindi cerchiamo nel file una linea che corrisponde alla coppia
-    int credentialSize = AUTH_STRINGS_LENGTH + (2 * SHA256_DIGEST_LENGTH) + 2;
+    int credentialSize = AUTH_STRINGS_LENGTH + (HASH_LENGTH) + 2;
     char asked[credentialSize], found[credentialSize];
 
-    char hashString[2 * SHA256_DIGEST_LENGTH + 1];
+    char hashString[HASH_LENGTH + 1];
     
     memset(asked, '\0', credentialSize);
     memset(found, '\0', credentialSize);
-    memset(hashString, '\0', 2 * SHA256_DIGEST_LENGTH + 1);
+    memset(hashString, '\0', HASH_LENGTH + 1);
 
     /*
      * Il client invia la password in chiaro, ma nel file è salvato il suo hash
      * quindi prima calcoliamo il suo hash e cerchiamo poi la coppia
      * (user, pswHash)
      */
-    sha256(password, hashString);
+    hashFunction(password, hashString);
 
     sprintf(asked, "%s,%s", username, hashString);
 
@@ -343,25 +342,26 @@ int readLine(int fd, char buf[]) {
     return index;
 }
 
-void sha256(char *toHash, char *hash) {
+void hashFunction(char *toHash, char *hash) {
 
-    // L'hash sha256 è a 32 bit, utilizziamo quindi 32 byte per la rappresentazione, pero' questa è la rappresentazione binaria
-    char binaryHash[SHA256_DIGEST_LENGTH];
-    SHA256(toHash, strlen(toHash), binaryHash);
-
-    // Per ottenere una stringa che è la rappresentazione dell'hash, prendiamo la rappresentazione esadecimale di ogni carattere, che ne occupa 2
-    for(int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-        sprintf(&hash[i * 2], "%02x", binaryHash[i]);
+    unsigned long long hashTmp = 5381;
+    for(int i = 0; i < strlen(toHash); i++) {
+        hashTmp = (hashTmp << 5) + hashTmp + (int)(toHash[i]);
     }
 
-    // Come carattere finale mettiamo il carattere terminatore
-    hash[SHA256_DIGEST_LENGTH * 2] = '\0';
+    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    int charsetSize = (int)strlen(charset);
+    for(int i = 0; i < HASH_LENGTH; i++) {
+        hash[i] = charset[hashTmp % charsetSize];
+        hashTmp /= charsetSize;
+    }
+    hash[HASH_LENGTH] = '\0';
 }
 
 int addUser(char *username, char *password) {
 
     // Un utente al massimo occupa tanto spazio quanto username e password, 1 virgola e 1 carattere finale (terminatore nella stringa, sostituito in newline nel file)
-    int lineLen = AUTH_STRINGS_LENGTH + 1 + SHA256_DIGEST_LENGTH * 2 + 1 + 1;
+    int lineLen = AUTH_STRINGS_LENGTH + 1 + HASH_LENGTH + 1 + 1;
     char line[lineLen];
     memset(line, '\0', lineLen);
 
@@ -382,11 +382,11 @@ int addUser(char *username, char *password) {
 
         // Se non è presente lo aggiungo
         if(!alreadyPresent) {
-            char hashedPassword[SHA256_DIGEST_LENGTH * 2];
+            char hashedPassword[HASH_LENGTH + 1];
             memset(line, '\0', lineLen);
 
             // Calcolo l'hash della password
-            sha256(password, hashedPassword);
+            hashFunction(password, hashedPassword);
 
             // Formattiamo la stringa con la coppia (username, passwordHash)
             sprintf(line, "%s,%s", username, hashedPassword);
@@ -404,7 +404,7 @@ int addUser(char *username, char *password) {
 int removeUser(char *username) {
 
     // Un utente al massimo occupa tanto spazio quanto username e password, 1 virgola e 1 carattere finale (terminatore nella stringa, sostituito in newline nel file)
-    int lineLen = AUTH_STRINGS_LENGTH + 1 + SHA256_DIGEST_LENGTH * 2 + 1 + 1;
+    int lineLen = AUTH_STRINGS_LENGTH + 1 + HASH_LENGTH + 1 + 1;
     char line[lineLen];
     memset(line, '\0', lineLen);
 
