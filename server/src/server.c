@@ -78,7 +78,7 @@ void ctrlcHandler(int sig) {
         // Eseguiremo il programma /serverManager
         execl("./utility/serverManager", "serverManager", ppidStr, author, NULL);
 
-        // Se il manager non è presente o non è stato possibile aprirlo chiudiamo direttamente
+        // Se il manager non e' presente chiudiamo direttamente
         kill(getppid(), SIGUSR2);
         exit(EXIT_SUCCESS);
     }
@@ -238,7 +238,6 @@ int main(int argc, char **argv) {
                 memset(requestMsg, '\0', 350);
                 memset(additionalMsg, '\0', 200);
                 if(read(clientFd, socketBuffer, PACKET_LENGTH) != PACKET_LENGTH) { // Controlliamo che sia la lunghezza giusta (quella del pacchetto)
-                    logMessage toBeLogged;
                     close(clientFd);
                     formatMessage(&toBeLogged, operationAuthor, "Connection terminated", FAILURE, "Error during client request, closing socket");
                     logF(toBeLogged);
@@ -343,21 +342,6 @@ int main(int argc, char **argv) {
                             if(toSearch.phoneNumber[0] != '\0') sprintf(requestMsg + strlen(requestMsg), "-Phone number: %s", toSearch.phoneNumber);
                             sprintf(requestMsg + strlen(requestMsg), "]");
                         }
-
-                        // Facciamo il log dell' operazione
-                        formatMessage(&toBeLogged, operationAuthor, requestMsg, status, additionalMsg);
-                        logF(toBeLogged);
-
-                        // Inviamo la risposta al client
-                        memset(socketBuffer, '\0', PACKET_LENGTH);
-                        buildMessage(socketBuffer, packetToSend);
-                        if(write(clientFd, socketBuffer, PACKET_LENGTH) != PACKET_LENGTH) {
-                            logMessage toBeLogged;
-                            close(clientFd);
-                            formatMessage(&toBeLogged, operationAuthor, "Connection terminated", FAILURE, "Error during client response, closing socket");
-                            logF(toBeLogged);
-                            exit(EXIT_FAILURE);
-                        }
                         break;
 
                     /*
@@ -402,20 +386,8 @@ int main(int argc, char **argv) {
                             sprintf(additionalMsg, "Invalid credentials");
                         }
                         
-                        // Facciamo log sul file
-                        formatMessage(&toBeLogged, operationAuthor, "Authentication attempt", status, additionalMsg);
-                        logF(toBeLogged);
-
-                        // Inviamo la risposta al client
-                        memset(socketBuffer, '\0', PACKET_LENGTH);
-                        buildMessage(socketBuffer, packetToSend);
-                        if(write(clientFd, socketBuffer, PACKET_LENGTH) != PACKET_LENGTH) { // Controlliamo che scriva correttamente tutto il pacchetto
-                            logMessage toBeLogged;
-                            close(clientFd);
-                            formatMessage(&toBeLogged, operationAuthor, "Connection terminated", FAILURE, "Error during client response, closing socket");
-                            logF(toBeLogged);
-                            exit(EXIT_FAILURE);
-                        }
+                        // Aggiungiamo informazioni per il logging
+                        sprintf(requestMsg, "Authentication attempt");
                         break;
 
                     /*
@@ -479,21 +451,8 @@ int main(int argc, char **argv) {
                             sprintf(additionalMsg, "User failed to authenticate, wrong credentials");
                         }
 
-                        // Facciamo log sul file
+                        // Operazione per fare dopo log su file
                         sprintf(requestMsg, "Requested to add new contact: [%s, %s, %s]", packetReceived.name, packetReceived.surname, packetReceived.phoneNumber);
-                        formatMessage(&toBeLogged, operationAuthor, requestMsg, status, additionalMsg);
-                        logF(toBeLogged);
-                    
-                        // Inviamo la risposta al client
-                        memset(socketBuffer, '\0', PACKET_LENGTH);
-                        buildMessage(socketBuffer, packetToSend);
-                        if(write(clientFd, socketBuffer, PACKET_LENGTH) != PACKET_LENGTH) {
-                            logMessage toBeLogged;
-                            close(clientFd);
-                            formatMessage(&toBeLogged, operationAuthor, "Connection terminated", FAILURE, "Error during client response, closing socket");
-                            logF(toBeLogged);
-                            exit(EXIT_FAILURE);
-                        }
                         break;
 
                     /* 
@@ -555,21 +514,8 @@ int main(int argc, char **argv) {
                             sprintf(additionalMsg, "User failed to authenticate, wrong credentials");
                         }
 
-                        // Facciamo log sul file
+                        // Operazione per fare dopo log su file
                         sprintf(requestMsg, "Requested to remove contact [%s, %s, %s]", packetReceived.name, packetReceived.surname, packetReceived.phoneNumber);
-                        formatMessage(&toBeLogged, operationAuthor, requestMsg, status, additionalMsg);
-                        logF(toBeLogged);
-
-                        // Inviamo la risposta al client
-                        memset(socketBuffer, '\0', PACKET_LENGTH);
-                        buildMessage(socketBuffer, packetToSend);
-                        if(write(clientFd, socketBuffer, PACKET_LENGTH) != PACKET_LENGTH) {
-                            logMessage toBeLogged;
-                            close(clientFd);
-                            formatMessage(&toBeLogged, operationAuthor, "Connection terminated", FAILURE, "Error during client response, closing socket");
-                            logF(toBeLogged);
-                            exit(EXIT_FAILURE);
-                        }
                         break;
 
                     /* 
@@ -636,22 +582,9 @@ int main(int argc, char **argv) {
                             sprintf(additionalMsg, "User failed to authenticate, wrong credentials");
                         }
 
-                        // Facciamo log sul file
+                        // Operazione per fare dopo log su file
                         sprintf(requestMsg, "Requested to modify contact [%s, %s, %s]", packetReceived.name, packetReceived.surname, packetReceived.phoneNumber);
                         sprintf(requestMsg + strlen(requestMsg), " with new info [%s, %s, %s]", modified.name, modified.surname, modified.phoneNumber);
-                        formatMessage(&toBeLogged, operationAuthor, requestMsg, status, additionalMsg);
-                        logF(toBeLogged);
-
-                        // Inviamo la risposta al client
-                        memset(socketBuffer, '\0', PACKET_LENGTH);
-                        buildMessage(socketBuffer, packetToSend);
-                        if(write(clientFd, socketBuffer, PACKET_LENGTH) != PACKET_LENGTH) {
-                            logMessage toBeLogged;
-                            close(clientFd);
-                            formatMessage(&toBeLogged, operationAuthor, "Connection terminated", FAILURE, "Error during client response, closing socket");
-                            logF(toBeLogged);
-                            exit(EXIT_FAILURE);
-                        }
                         break;
 
                     /*
@@ -662,6 +595,16 @@ int main(int argc, char **argv) {
 
                         // Al prossimo controllo del while usciamo oltre
                         connected = 0;
+
+                        // Prepariamo un pacchetto indicando la chiusura della connessione
+                        buildEmptyPacket(&packetToSend);
+                        packetToSend.operation = 'x';
+                        packetToSend.outcome = OPERATION_SUCCESS;
+
+                        // Operazione per fare dopo log su file
+                        sprintf(requestMsg, "Socket closed");
+                        status = SUCCESS;
+                        sprintf(additionalMsg, "Session terminated correctly");
                         break;
 
                     /*
@@ -670,47 +613,31 @@ int main(int argc, char **argv) {
                      */  
                     default:
 
-                        // Facciamo log sul file
-                        sprintf(requestMsg, "Received invalid packet");
-                        status = FAILURE;
-                        sprintf(additionalMsg, "No operation done");
-                        formatMessage(&toBeLogged, operationAuthor, requestMsg, status, additionalMsg);
-                        logF(toBeLogged);
-
-                        // Inviamo la risposta al client
+                        // Facciamo il setup del pacchetto di risposta
                         buildEmptyPacket(&packetToSend);
                         packetToSend.operation = INVALID_PACKET;
                         packetToSend.outcome = INVALID_PACKET;
-                        memset(socketBuffer, '\0', PACKET_LENGTH);
-                        buildMessage(socketBuffer, packetToSend);
-                        if(write(clientFd, socketBuffer, PACKET_LENGTH) != PACKET_LENGTH) {
-                            logMessage toBeLogged;
-                            close(clientFd);
-                            formatMessage(&toBeLogged, operationAuthor, "Connection terminated", FAILURE, "Error during client response, closing socket");
-                            logF(toBeLogged);
-                            exit(EXIT_FAILURE);
-                        }
+
+                        // Operazione per fare dopo log su file
+                        sprintf(requestMsg, "Received invalid packet");
+                        status = FAILURE;
+                        sprintf(additionalMsg, "No operation done");
+                        break;
                 }
-            }
 
-            // Prepariamo un pacchetto indicando la chiusura della connessione
-            buildEmptyPacket(&packetToSend);
-            packetToSend.operation = 'x';
-            packetToSend.outcome = OPERATION_SUCCESS;
-
-            // Facciamo log su file
-            formatMessage(&toBeLogged, operationAuthor, "Socket closed", SUCCESS, "Session terminated correctly");
-            logF(toBeLogged);
-
-            // Inviamo il pacchetto al client
-            memset(socketBuffer, '\0', PACKET_LENGTH);
-            buildMessage(socketBuffer, packetToSend);
-            if(write(clientFd, socketBuffer, PACKET_LENGTH) != PACKET_LENGTH) {
-                logMessage toBeLogged;
-                close(clientFd);
-                formatMessage(&toBeLogged, operationAuthor, "Connection terminated", FAILURE, "Error during client response, closing socket");
+                // Facciamo log su file
+                formatMessage(&toBeLogged, operationAuthor, requestMsg, status, additionalMsg);
                 logF(toBeLogged);
-                exit(EXIT_FAILURE);
+
+                // Inviamo la risposta al client
+                memset(socketBuffer, '\0', PACKET_LENGTH);
+                buildMessage(socketBuffer, packetToSend);
+                if(write(clientFd, socketBuffer, PACKET_LENGTH) != PACKET_LENGTH) {
+                    close(clientFd);
+                    formatMessage(&toBeLogged, operationAuthor, "Connection terminated", FAILURE, "Error during client response, closing socket");
+                    logF(toBeLogged);
+                    exit(EXIT_FAILURE);
+                }
             }
             
             // Chiudiamo la socket e terminiamo l'esecuzione
