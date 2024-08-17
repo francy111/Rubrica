@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <openssl/sha.h>
 
 /*
  * Il processo figlio, che comunica con il client è immune a CTRL-C
