@@ -145,14 +145,13 @@ int matchesParameters(Contact asked, Contact found);
 int readLine(int fd, char *buf);
 
 /**
- * Esegue l'hashing della stringa toHash utilizzando
- * sha256 e salva la rappresentazione a stringa del risultato
- * nella stringa hash
+ * Esegue l'hashing della stringa toHash e salva la 
+ * rappresentazione a stringa del risultato nella stringa hash
  * 
  * toHash - Stringa della quale vogliamo l'hash
- * hash - Hash della stringa (toHash) tramite sha256
+ * hash - Hash della stringa toHash 
  */
-void sha256(char *toHash, char *hash);
+void hashFunction(char *toHash, char *hash);
 
 /**
  * Aggiunge un utente con le credenziali fornite, se non 
